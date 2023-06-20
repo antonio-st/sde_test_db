@@ -126,7 +126,7 @@ JOIN tickets t ON b.book_ref = t.book_ref
 JOIN ticket_flights tf ON t.ticket_no = tf.ticket_no
 GROUP BY b.book_ref
 ORDER BY count_brf DESC
-LIMIT 1
+LIMIT 1;
 
 
 ---6---
@@ -143,4 +143,4 @@ FROM bookings b
          JOIN ticket_flights tf ON t.ticket_no = tf.ticket_no
 GROUP BY b.book_ref, t.passenger_id
 ORDER BY count_ps DESC
-LIMIT 1
+LIMIT 1;
