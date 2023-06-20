@@ -17,7 +17,10 @@ CREATE TABLE results
 );
 
 
---1-- Вывести максимальное количество человек в одном бронировании
+--1--
+
+
+-- Вывести максимальное количество человек в одном бронировании
 INSERT INTO results
 
 SELECT 01::int
@@ -28,7 +31,10 @@ ORDER BY count_br DESC
 LIMIT 1;
 
 
---2-- Вывести количество бронирований с количеством людей больше среднего значения людей на одно бронирование
+--2--
+
+
+-- Вывести количество бронирований с количеством людей больше среднего значения людей на одно бронирование
 
 WITH cbrf as (
                 SELECT COUNT(*) as "count_book_ref"
@@ -44,10 +50,11 @@ FROM cbrf
 WHERE count_book_ref > (SELECT AVG(count_book_ref) FROM cbrf);
 
 
-SELECT * FROM results
+
+---3---
 
 
---3-- Вывести количество бронирований, у которых состав пассажиров повторялся два и более раза,
+-- Вывести количество бронирований, у которых состав пассажиров повторялся два и более раза,
 -- среди бронирований с максимальным количеством людей (п.1)
 
 -- бронирования и количество пасажиров в каждом из них
@@ -84,3 +91,56 @@ FROM (
     ) t
 WHERE t.pass_num = (SELECT MAX(c) FROM cte_3);
 
+
+
+---4---
+
+
+-- Вывести номера брони и контактную информацию по пассажирам в брони
+-- (passenger_id, passenger_name, contact_data) с количеством людей в брони = 3
+WITH count_pi as (SELECT book_ref
+                  FROM tickets
+                  GROUP BY book_ref
+                  HAVING COUNT(*) = 3
+                  )
+
+INSERT INTO results
+
+SELECT 4::int
+    ,CONCAT(book_ref, '|', passenger_id, '|',passenger_name,'|', contact_data)
+FROM tickets
+WHERE book_ref in (SELECT book_ref FROM count_pi)
+
+
+---5---
+
+
+-- Вывести максимальное количество перелётов на бронь
+
+INSERT INTO results
+
+SELECT 5::int
+        ,COUNT(b.book_ref) as "count_brf"
+FROM bookings b
+JOIN tickets t ON b.book_ref = t.book_ref
+JOIN ticket_flights tf ON t.ticket_no = tf.ticket_no
+GROUP BY b.book_ref
+ORDER BY count_brf DESC
+LIMIT 1
+
+
+---6---
+
+
+-- Вывести максимальное количество перелётов на пассажира в одной брони
+
+INSERT INTO results
+
+SELECT 6::int
+     ,COUNT(t.passenger_id) as "count_ps"
+FROM bookings b
+         JOIN tickets t ON b.book_ref = t.book_ref
+         JOIN ticket_flights tf ON t.ticket_no = tf.ticket_no
+GROUP BY b.book_ref, t.passenger_id
+ORDER BY count_ps DESC
+LIMIT 1
