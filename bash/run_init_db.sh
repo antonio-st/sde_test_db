@@ -2,7 +2,7 @@
 
 echo -e "\n$ Скачиваем Docker образ PostgreSQL \n"
 
-docker pull postgres:14.8
+docker pull postgres
 
 echo -e "\n Done \n"
 
@@ -23,9 +23,12 @@ docker run --name sde_test_db \
 postgres
 
 echo -e "\n$ Контейнер с PostgreSQL запущен\n"
+sleep 3
 
+echo -e "\n$ Проверим поднятый контейнер\n"
 
-sleep 1
+docker ps
+sleep 3
 
 echo -e "\n$ Запускаем контейнер для заполнения БД, немного подождите....\n"
 
@@ -35,17 +38,14 @@ psql -U \
 test_sde \
 -d demo \
 -f /var/lib/postgresql/data/init_db/demo.sql
-sleep 20
+sleep 15
 
 
-echo -e "\n$ Проверим поднятый контейнер\n"
-
-docker ps
 
 echo -e "\n$ Проверим кол-во записей в таблице bookings, должно быть 262788 \n"
 
 docker exec sde_test_db psql -U test_sde -d demo -c "SELECT COUNT(*) FROM bookings.bookings"
-sleep 5
+sleep 3
 
 
 echo -e "\n$ Done...\n"
