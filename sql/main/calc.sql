@@ -109,7 +109,7 @@ INSERT INTO results
 SELECT 4::int
     ,CONCAT(book_ref, '|', passenger_id, '|',passenger_name,'|', contact_data)
 FROM tickets
-WHERE book_ref in (SELECT book_ref FROM count_pi)
+WHERE book_ref in (SELECT book_ref FROM count_pi);
 
 
 ---5---
