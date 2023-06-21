@@ -139,8 +139,46 @@ INSERT INTO results
 SELECT 6::int
      ,COUNT(t.passenger_id) as "count_ps"
 FROM bookings b
-         JOIN tickets t ON b.book_ref = t.book_ref
-         JOIN ticket_flights tf ON t.ticket_no = tf.ticket_no
+JOIN tickets t ON b.book_ref = t.book_ref
+JOIN ticket_flights tf ON t.ticket_no = tf.ticket_no
 GROUP BY b.book_ref, t.passenger_id
 ORDER BY count_ps DESC
 LIMIT 1;
+
+---7---
+-- Вывести максимальное количество перелётов на пассажира
+
+WITH cpid as (SELECT t.passenger_id
+     ,COUNT(t.passenger_id) as "cpid"
+FROM tickets t
+JOIN ticket_flights tf ON t.ticket_no = tf.ticket_no
+GROUP BY t.passenger_id
+ORDER BY cpid DESC)
+
+INSERT INTO results
+
+SELECT 7::int
+    ,MAX(cpid)
+FROM cpid;
+
+
+---8---
+-- Вывести контактную информацию по пассажиру(ам)
+-- (passenger_id, passenger_name, contact_data) и общие траты на билеты,
+-- для пассажира потратившему минимальное количество денег на перелеты
+
+INSERT INTO results
+
+SELECT 8::int, concat(passenger_id, '|', passenger_name, '|', contact_data, '|', rank_sum)
+from (
+        SELECT passenger_id
+                   , passenger_name
+                   , contact_data
+                   , rank() over (order by sum(amount)) as "rank_sum"
+              FROM tickets t
+                       JOIN ticket_flights tf on t.ticket_no = tf.ticket_no
+              WHERE amount is not null
+              GROUP BY t.ticket_no
+      ) t
+WHERE rank_sum = 1
+ORDER BY passenger_id, passenger_name, contact_data;
