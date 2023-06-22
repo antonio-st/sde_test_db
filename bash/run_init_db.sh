@@ -1,16 +1,16 @@
 #!/bin/bash
 
-echo -e "\n$ Скачиваем Docker образ PostgreSQL \n"
+echo -e "\n$ Скачиваем Docker образ PostgresSQL \n"
 
-docker pull postgres:14.8
+docker pull postgres:14
 
 echo -e "\n Done \n"
 
 sleep 5
 
-echo -e "\n$ Запускаем контейнер PostgreSQL и заполняем БД demo\n"
+echo -e "\n$ Запускаем контейнер PostgresSQL и заполняем БД demo\n"
 
-
+# Так же рабочий скрипт для поднятия контейнера
 # docker run --name sde_test_db \
 # --rm \
 # -e POSTGRES_PASSWORD="@sde_password012" \
@@ -20,7 +20,7 @@ echo -e "\n$ Запускаем контейнер PostgreSQL и заполня�
 # -v $(pwd)/sql:/var/lib/postgresql/data \
 # -p 5434:5434 \
 # -d \
-# postgres
+# postgres:14
 
 docker run --name sde_test_db \
 --rm \
@@ -36,7 +36,7 @@ docker run --name sde_test_db \
 postgres:14
 
 
-echo -e "\n$ Контейнер с PostgreSQL запущен и заполнен\n"
+echo -e "\n$ Контейнер с PostgresSQL запущен и заполнен\n"
 sleep 5
 
 echo -e "\n$ Проверим поднятый контейнер\n"
@@ -44,6 +44,7 @@ echo -e "\n$ Проверим поднятый контейнер\n"
 docker ps
 sleep 3
 
+# Рабочий скрипт для заполнения контейнера
 # echo -e "\n$ Запускаем контейнер для заполнения БД, немного подождите....\n"
 # 
 # 
@@ -76,22 +77,6 @@ psql -U \
 test_sde \
 -d demo \
 -c "SELECT COUNT(*) FROM bookings.bookings"
-
-echo -e "\n$ Done...\n"
-
-
-echo -e "\n$ Заполним таблицу results \n"
-
-sleep 2
-
-docker exec sde_test_db \
-psql -U \
-test_sde \
--d demo \
--f /var/lib/postgresql/data/main/calc.sql \
--c "SELECT id, COUNT(id) FROM results GROUP BY id ORDER BY 1"
-
-sleep 2
 
 echo -e "\n$ Done...\n"
 
