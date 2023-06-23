@@ -14,8 +14,4 @@
 
 * Заполнение таблицы results:
 
-  docker exec sde_test_db \
-  psql -U \
-  test_sde \
-  -d demo \
-  -f /var/lib/postgresql/data/main/calc.sql
+  docker exec sde_test_db psql -U test_sde -d demo -f /var/lib/postgresql/data/main/calc.sql

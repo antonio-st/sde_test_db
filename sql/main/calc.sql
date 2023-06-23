@@ -48,59 +48,41 @@ WHERE count_book_ref > (SELECT AVG(count_book_ref) FROM cbrf);
 ---3---  Вывести количество бронирований, у которых состав пассажиров повторялся два и более раза,
         -- среди бронирований с максимальным количеством людей (п.1)
 
--- бронирования и количество пасажиров в каждом из них
-WITH cte_3 as (
-    SELECT book_ref
-         ,COUNT(*) c
-    FROM tickets
-    GROUP BY book_ref
-                ),
--- бронирования и id пассажира среди тех бронирований,
--- где max число пассажиров в бронировании
-     cte_3_1 as (
-         SELECT book_ref
-              ,passenger_id
-         FROM tickets
-         WHERE book_ref in (
-                            SELECT book_ref
-                            FROM cte_3
-                            WHERE c = (SELECT MAX(c) FROM cte_3)
-                            )
-                )
+WITH pg as (SELECT book_ref
+                 , string_agg(passenger_id, ',' ORDER BY passenger_id) as passenger_group
+                 , rank() OVER (ORDER BY count(passenger_id) DESC) AS rnk
+            FROM bookings.tickets
+            GROUP BY book_ref
+            ORDER BY count(passenger_id) DESC)
 
 INSERT INTO results
--- в окошках посчитаем кол-во пассажиров в бронированиях, отсеим те , что не повторяются
--- среди бронирований с максимальным количеством людей
-SELECT 3 as id
-     ,COUNT(distinct book_ref)
-FROM (
-        SELECT t1.book_ref,
-                ROW_NUMBER() OVER(PARTITION BY t1.book_ref, t2.book_ref
-                         ORDER BY t1.book_ref, t2.book_ref) pass_num
-        FROM cte_3_1 t1
-        JOIN cte_3_1 t2 ON t1.passenger_id = t2.passenger_id AND t1.book_ref != t2.book_ref
-    ) t
-WHERE t.pass_num = (SELECT MAX(c) FROM cte_3);
 
+SELECT 3 as id, count(book_ref)
+FROM pg
+WHERE rnk = 1
+GROUP BY passenger_group
+HAVING count(passenger_group) > 1;
 
 
 ---4---  Вывести номера брони и контактную информацию по пассажирам в брони
         -- (passenger_id, passenger_name, contact_data) с количеством людей в брони = 3
 
-
-
-WITH count_pi as (SELECT book_ref
-                  FROM tickets
-                  GROUP BY book_ref
-                  HAVING COUNT(*) = 3
-                  )
-
 INSERT INTO results
 
-SELECT 4 as id
-    ,CONCAT(book_ref, '|', passenger_id, '|',passenger_name,'|', contact_data)
-FROM tickets
-WHERE book_ref in (SELECT book_ref FROM count_pi);
+SELECT  4 as id, concat_ws('|', t.book_ref, string_agg(t.passenger_info, '|'))
+FROM (
+         SELECT book_ref
+              , concat_ws('|', passenger_id, passenger_name, contact_data) AS passenger_info
+         FROM bookings.tickets
+         WHERE book_ref IN (
+             SELECT book_ref
+             FROM bookings.tickets
+             GROUP BY book_ref
+             HAVING count(passenger_id) = 3
+         )
+     ) t
+GROUP BY t.book_ref
+ORDER BY 2;
 
 
 
@@ -116,7 +98,6 @@ JOIN ticket_flights tf ON t.ticket_no = tf.ticket_no
 GROUP BY b.book_ref
 ORDER BY count_brf DESC
 LIMIT 1;
-
 
 
 ---6---  Вывести максимальное количество перелётов на пассажира в одной брони
@@ -201,11 +182,9 @@ ORDER BY sum_time_duration DESC;
 
 
 
----10---
+---10--- Вывести город(а) с количеством аэропортов больше одного
 
 
-
---Вывести город(а) с количеством аэропортов больше одного
 INSERT INTO results
 
 SELECT 10 as id
@@ -235,10 +214,8 @@ WHERE count_city = (SELECT MIN(count_city) FROM comm_beetwen_city);
 
 
 
----12---
 
-
--- Вывести пары городов, у которых нет прямых сообщений исключив реверсные дубликаты
+---12---  Вывести пары городов, у которых нет прямых сообщений исключив реверсные дубликаты
 
 WITH comm_beetwen_city as(
     SELECT distinct departure_city, arrival_city
@@ -262,6 +239,7 @@ ORDER BY dc, ac;
 
 
 
+
 ---13---  Вывести города, до которых нельзя добраться без пересадок из Москвы?
 
 
@@ -276,7 +254,6 @@ AND departure_city not in (SELECT arrival_city
                            FROM routes
                            WHERE departure_city = 'Москва')
 ORDER BY 2;
-
 
 
 ---14---  Вывести модель самолета, который выполнил больше всего рейсов
@@ -297,9 +274,7 @@ FROM model_dep_max
 WHERE count_fly =  (SELECT MAX(count_fly) FROM model_dep_max);
 
 
----15---
-
---Вывести модель самолета, который перевез больше всего пассажиров
+---15--- Вывести модель самолета, который перевез больше всего пассажиров
 
 WITH model_max_pass as (
                         SELECT a.model
@@ -318,32 +293,34 @@ SELECT 15 as id
 FROM model_max_pass
 WHERE count_ticket = (SELECT MAX(count_ticket) FROM model_max_pass);
 
-
-
-
 ---16--- Вывести отклонение в минутах суммы запланированного времени перелета от
      -- фактического по всем перелётам
+
 INSERT INTO results
-SELECT
-    16 as id,
-    EXTRACT (EPOCH FROM SUM(actual_duration)- SUM(scheduled_duration))/60 as "diff"
-from flights_v;
+
+SELECT 16 as id, ABS(extract(epoch from sum(scheduled_duration) - sum(actual_duration)) / 60)::int as difference
+FROM bookings.flights_v
+WHERE status = 'Arrived';
 
 
 ---17--- Вывести города, в которые осуществлялся перелёт из Санкт-Петербурга 2016-09-13
 
 
 INSERT INTO results
-SELECT 17 as id
-     ,arrival_city
-from flights_v
-WHERE departure_city = 'Санкт-Петербург' and actual_departure::date = '2016-09-13'
-ORDER BY arrival_city;
+
+SELECT DISTINCT
+    17 as id,
+    arrival_city as response
+FROM flights_v f
+WHERE departure_city = 'Санкт-Петербург'
+AND date_trunc('day',actual_departure_local) = '2016-09-13'
+ORDER BY 1,2;
 
 
 ---18--- Вывести перелёт(ы) с максимальной стоимостью всех билетов
 
 INSERT INTO results
+
 WITH flight_amount as
          (
              SELECT
@@ -357,6 +334,7 @@ SELECT
     flight_id as response
 FROM flight_amount
 WHERE sum_amnt = (SELECT MAX(sum_amnt) from flight_amount);
+
 
 
 ---19--- Выбрать дни в которых было осуществлено минимальное количество перелётов
@@ -397,27 +375,13 @@ FROM
 
 ---21--- Вывести топ 5 городов у которых среднее время перелета до пункта назначения больше 3 часов
 
-with cte_21 as
-         (
-             select departure_city,
-                    extract (epoch from avg(actual_duration))/60/60 as avg_dur,
-                    count(flight_id) as cnt_flights
-             from flights_v
-             where status = 'Arrived'
-             group by departure_city
-             having extract (epoch from avg(actual_duration))/60/60 > 3
-             order by 3 desc
-             limit 5
-         )
-
 INSERT INTO results
 
-select
-    21 as id,
-    departure_city as response
-from cte_21
-order by 2;
-
-
-
-
+SELECT 21 as id
+     ,departure_city
+FROM bookings.flights_v
+WHERE status = 'Arrived'
+GROUP BY departure_city
+HAVING AVG(actual_duration) > INTERVAL '3 hours'
+ORDER BY AVG(actual_duration) DESC
+LIMIT 5;
